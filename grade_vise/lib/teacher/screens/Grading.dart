@@ -145,7 +145,7 @@ class GradingState extends State<Grading> {
                   _buildStatCard(
                     icon: Icons.timer,
                     value:
-                        '${(submission / (widget.students * assignment)) * 100}%',
+                        '${((submission / (widget.students * assignment)) * 100).toStringAsFixed(2)}%',
                     label: 'Activity Ratio',
                     color: const Color(0xFFFACC15),
                   ),
