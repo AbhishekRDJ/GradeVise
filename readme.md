@@ -7,9 +7,7 @@
 **Solution**: GradeVise is an AI-powered Android app specifically designed to address grassroots educational challenges across rural India. Built for "Bharat," our solution goes beyond traditional grading to offer comprehensive educational support including vernacular language learning, dropout prediction analytics, and intelligent teacher assist tools. Through smart features like multilingual classroom creation, automated evaluation in regional languages, and predictive analytics for student performance, the app enables educators to save time while providing personalized support. Students receive instant feedback in their preferred language, progress tracking, early intervention alerts, and tailored learning resources - making quality education accessible and inclusive for all.
 
 **A CodeWave 2025 Project** - *AI for Real India* by **Team GradeVise Squad From Deogiri Institute of Engineering And Management Studies | Government College of Engineering Chh. Sambhajinagar | Vishwakarma Institute of Technology Pune.**
-## Deployed LINK:
-# GitHub Link: https://github.com/AbhishekRDJ/GradeVise
-# Hosted Link: https://drive.google.com/file/d/1pQrHT9KV36237QOUuv61mOhHCFmXhsGU/view
+
 ## Intro To GradeVise Video
 
 [![Intro To GradeVise](https://i.postimg.cc/Gh342myp/Whats-App-Image-2025-04-06-at-23-42-49-d452082f.jpg)
