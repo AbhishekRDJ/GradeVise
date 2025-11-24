@@ -50,11 +50,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC-rB4l8vm-8qwvynNstXa3rh3FwYlm8mc',
-    appId: '1:1002383080884:android:a4f5035e50ab6f52e386e1',
-    messagingSenderId: '1002383080884',
-    projectId: 'gradevise-e5c0d',
-    storageBucket: 'gradevise-e5c0d.firebasestorage.app',
+    apiKey: 'AIzaSyDt8GWYInh1UK6myJbYQoIJrDXRtvcorMs',
+    appId: '1:812020918166:android:81966551e01c59e7839fb7',
+    messagingSenderId: '812020918166',
+    projectId: 'gradevise-2',
+    storageBucket: 'gradevise-2.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

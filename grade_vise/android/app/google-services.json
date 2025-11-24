@@ -1,59 +1,26 @@
 {
   "project_info": {
-    "project_number": "1002383080884",
-    "project_id": "gradevise-e5c0d",
-    "storage_bucket": "gradevise-e5c0d.firebasestorage.app"
+    "project_number": "812020918166",
+    "project_id": "gradevise-2",
+    "storage_bucket": "gradevise-2.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1002383080884:android:a4f5035e50ab6f52e386e1",
+        "mobilesdk_app_id": "1:812020918166:android:81966551e01c59e7839fb7",
         "android_client_info": {
           "package_name": "com.teamgradevise.grade_vise"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "1002383080884-6s2oubl5p73dcmo1ekevmtenooar0m38.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.teamgradevise.grade_vise",
-            "certificate_hash": "d213acc0f045bdfb1d2ad825eadf2459dc069d49"
-          }
-        },
-        {
-          "client_id": "1002383080884-9dmmlcgfu51tmguc19ugan6o2oalpekc.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.teamgradevise.grade_vise",
-            "certificate_hash": "809fded78ba1bb6dfa92dd1f4a5ccc162a712c58"
-          }
-        },
-        {
-          "client_id": "1002383080884-5c90u7e08nc4clslo2p5eojmbimcpufb.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyC-rB4l8vm-8qwvynNstXa3rh3FwYlm8mc"
+          "current_key": "AIzaSyDt8GWYInh1UK6myJbYQoIJrDXRtvcorMs"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "1002383080884-5c90u7e08nc4clslo2p5eojmbimcpufb.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "1002383080884-p8n6mv1aaddeqcjtvqdinq6uav5molef.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.gradeVise"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
