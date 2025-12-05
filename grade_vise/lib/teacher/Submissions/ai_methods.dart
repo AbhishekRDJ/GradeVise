@@ -3,88 +3,101 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
-/// Place your API key somewhere secure. Don't commit this in source control.
-/// For quick testing you can hardcode, but for production call Gemini from a server.
-const String GEMINI_API_KEY = String.fromEnvironment('AIzaSyDeXAFQO1eLRUe9dCewgmVnq5gpZRChomc', defaultValue: '');
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Base endpoint - choose v1beta or v1beta2 depending on docs; adjust if needed.
-/// Example endpoint format:
-/// https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+/// FIXED: Use your actual API key directly (or use proper environment variable setup)
+String GEMINI_API_KEY = dotenv.env['GEMINI_API_KEY'] ?? "";
+
+/// Base endpoint for Gemini API
 String geminiEndpoint(String model) =>
     'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$GEMINI_API_KEY';
 
-/// Sends the prompt to Gemini and returns the generated text (raw).
-/// Tries multiple common paths in the response JSON so it's robust.
-Future<String?> callGemini(String model, String prompt,
-    {int? maxOutputTokens, double? temperature}) async {
+/// FIXED: Corrected response parsing to match actual Gemini API structure
+Future<String?> callGemini(
+  String model,
+  String prompt, {
+  int? maxOutputTokens,
+  double? temperature,
+}) async {
   final uri = Uri.parse(geminiEndpoint(model));
 
   final body = <String, dynamic>{
     'contents': [
       {
         'parts': [
-          {'text': prompt}
-        ]
-      }
+          {'text': prompt},
+        ],
+      },
     ],
     if (maxOutputTokens != null || temperature != null)
-      'generation_config': {
-        if (maxOutputTokens != null) 'max_output_tokens': maxOutputTokens,
+      'generationConfig': {
+        if (maxOutputTokens != null) 'maxOutputTokens': maxOutputTokens,
         if (temperature != null) 'temperature': temperature,
       },
   };
 
-  final resp = await http.post(
-    uri,
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode(body),
-  );
+  try {
+    final resp = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
 
-  if (resp.statusCode < 200 || resp.statusCode >= 300) {
-    print('Gemini HTTP error: ${resp.statusCode} ${resp.body}');
+    print('Gemini Response Status: ${resp.statusCode}');
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      print('Gemini HTTP error: ${resp.statusCode}');
+      print('Response body: ${resp.body}');
+      // Throw an exception with the error details so it can be caught and displayed
+      throw Exception('Gemini API Error: ${resp.statusCode} - ${resp.body}');
+    }
+
+    final Map<String, dynamic> jsonResp = jsonDecode(resp.body);
+    print('Gemini Response: $jsonResp');
+
+    // FIXED: Correct extraction of text from Gemini's response structure
+    if (jsonResp.containsKey('candidates') && jsonResp['candidates'] is List) {
+      final candidates = jsonResp['candidates'] as List;
+      if (candidates.isNotEmpty && candidates[0] is Map) {
+        final candidate = candidates[0] as Map<String, dynamic>;
+
+        // Navigate: candidate -> content -> parts -> text
+        if (candidate.containsKey('content') && candidate['content'] is Map) {
+          final content = candidate['content'] as Map<String, dynamic>;
+          if (content.containsKey('parts') && content['parts'] is List) {
+            final parts = content['parts'] as List;
+            final textParts =
+                parts
+                    .where((p) => p is Map && p.containsKey('text'))
+                    .map((p) => (p as Map)['text'].toString())
+                    .toList();
+
+            if (textParts.isNotEmpty) {
+              return textParts.join('\n');
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback
+    print('Warning: Unexpected response structure');
     return null;
+  } catch (e) {
+    print('Error calling Gemini: $e');
+    rethrow; // Rethrow to be handled by caller
   }
-
-  final Map<String, dynamic> jsonResp = jsonDecode(resp.body);
-
-  // Helper to extract text from likely shapes:
-  String? extractFromCandidate(Map<String, dynamic> cand) {
-    // Some responses have cand['content'] -> list of { 'text': '...' }
-    if (cand.containsKey('content') && cand['content'] is List) {
-      final parts = cand['content'] as List;
-      return parts.map((p) {
-        if (p is Map && p.containsKey('text')) return p['text'].toString();
-        return p.toString();
-      }).join();
-    }
-    // Some samples show cand['output'] or cand['text']
-    if (cand.containsKey('output')) return cand['output']?.toString();
-    if (cand.containsKey('text')) return cand['text']?.toString();
-    // fallback: stringify candidate
-    return cand.toString();
-  }
-
-  // 1) Typical top-level: candidates array
-  if (jsonResp.containsKey('candidates') && jsonResp['candidates'] is List) {
-    final candidates = jsonResp['candidates'] as List;
-    if (candidates.isNotEmpty && candidates[0] is Map) {
-      return extractFromCandidate(candidates[0] as Map<String, dynamic>);
-    }
-  }
-
-  // 2) Some docs return 'output' or other top-level fields:
-  if (jsonResp.containsKey('output')) return jsonResp['output']?.toString();
-  if (jsonResp.containsKey('text')) return jsonResp['text']?.toString();
-
-  // 3) Fallback: entire JSON as string
-  return jsonResp.toString();
 }
 
-/// Parses the evaluator response (same logic you had before)
+/// Parses the evaluator response
 Map<String, dynamic> parseResponse(String responseText) {
+  print('Parsing response: $responseText');
+
   final RegExp markRegex = RegExp(r"Mark:\s*(\d+)");
-  final RegExp feedbackRegex =
-      RegExp(r"Feedback:\s*(.+?)(?=Summary Report:|\z)", dotAll: true);
+  final RegExp feedbackRegex = RegExp(
+    r"Feedback:\s*(.+?)(?=Summary Report:|\z)",
+    dotAll: true,
+  );
   final RegExp summaryRegex = RegExp(r"Summary Report:\s*(.+)", dotAll: true);
 
   int mark = 0;
@@ -94,22 +107,26 @@ Map<String, dynamic> parseResponse(String responseText) {
   }
 
   final feedback =
-      feedbackRegex.firstMatch(responseText)?.group(1)?.trim() ?? "No feedback provided.";
+      feedbackRegex.firstMatch(responseText)?.group(1)?.trim() ??
+      "No feedback provided.";
   final summaryReport =
-      summaryRegex.firstMatch(responseText)?.group(1)?.trim() ?? "No summary provided.";
+      summaryRegex.firstMatch(responseText)?.group(1)?.trim() ??
+      "No summary provided.";
 
   return {"mark": mark, "feedback": feedback, "summaryReport": summaryReport};
 }
 
-/// EvaluateSolutions: migrates from VertexAI call to Gemini REST call
+/// Evaluate student solutions using Gemini
 Future<List<Map<String, dynamic>>> evaluateSolutions(
   List<Map<String, String>> solutions,
   String assignmentContent, {
-  String model = 'gemini-2.0-flash',
+  String model = 'gemini-2.0-flash-exp',
 }) async {
   List<Map<String, dynamic>> results = [];
 
   for (var solution in solutions) {
+    print('Evaluating solution for UID: ${solution["uid"]}');
+
     final prompt = '''
 You are an experienced teacher evaluating a student's assignment. Your job is to fairly assess their submission based on the given instructions, provide constructive feedback, and offer a brief performance summary.
 
@@ -144,28 +161,39 @@ Feedback: [Detailed but concise feedback about the student's submission]
 Summary Report: [Brief overall performance review in 2-3 sentences]  
 ''';
 
-    final generated = await callGemini(model, prompt, maxOutputTokens: 800, temperature: 0.0);
+    try {
+      final generated = await callGemini(
+        model,
+        prompt,
+        maxOutputTokens: 800,
+        temperature: 0.0,
+      );
 
-    if (generated != null) {
-      final extractedData = parseResponse(generated);
-      results.add({
-        "uid": solution["uid"],
-        "assignmentId": solution["assignmentId"],
-        "classroomId": solution["classroomId"],
-        "mark": extractedData["mark"],
-        "feedback": extractedData["feedback"],
-        "summaryReport": extractedData["summaryReport"],
-        'submissionId': solution['submissionId'],
-      });
-    } else {
-      // In case of failure, include a safe fallback
+      if (generated != null && generated.isNotEmpty) {
+        final extractedData = parseResponse(generated);
+        results.add({
+          "uid": solution["uid"],
+          "assignmentId": solution["assignmentId"],
+          "classroomId": solution["classroomId"],
+          "mark": extractedData["mark"],
+          "feedback": extractedData["feedback"],
+          "summaryReport": extractedData["summaryReport"],
+          'submissionId': solution['submissionId'],
+        });
+        print('Evaluation successful: Mark ${extractedData["mark"]}/10');
+      } else {
+        throw Exception("Empty response from Gemini");
+      }
+    } catch (e) {
+      print('Evaluation failed for UID: ${solution["uid"]} - $e');
+      // In case of failure, include the error message in feedback
       results.add({
         "uid": solution["uid"],
         "assignmentId": solution["assignmentId"],
         "classroomId": solution["classroomId"],
         "mark": 0,
-        "feedback": "Evaluation failed (no AI response).",
-        "summaryReport": "No summary available.",
+        "feedback": "Evaluation failed: $e",
+        "summaryReport": "No summary available due to error.",
         'submissionId': solution['submissionId'],
       });
     }
@@ -174,14 +202,18 @@ Summary Report: [Brief overall performance review in 2-3 sentences]
   return results;
 }
 
-/// generateStudentReport: uses the same Gemini REST call
-Future<void> generateStudentReport(String classroomId, String uid,
-    {String model = 'gemini-2.0-flash'}) async {
-  var snap = await FirebaseFirestore.instance
-      .collection('evaluations')
-      .where('classroomId', isEqualTo: classroomId)
-      .where('uid', isEqualTo: uid)
-      .get();
+/// Generate student report using Gemini
+Future<void> generateStudentReport(
+  String classroomId,
+  String uid, {
+  String model = 'gemini-2.0-flash-exp',
+}) async {
+  var snap =
+      await FirebaseFirestore.instance
+          .collection('evaluations')
+          .where('classroomId', isEqualTo: classroomId)
+          .where('uid', isEqualTo: uid)
+          .get();
 
   if (snap.docs.isEmpty) {
     print("No evaluations found for this student.");
@@ -194,7 +226,8 @@ Future<void> generateStudentReport(String classroomId, String uid,
 
   for (var doc in snap.docs) {
     totalMarks += (doc.data()["mark"] ?? 0) as int;
-    summary += "${doc.data()["summary"] ?? doc.data()["summaryReport"] ?? ''}\n";
+    summary +=
+        "${doc.data()["summary"] ?? doc.data()["summaryReport"] ?? ''}\n";
   }
 
   double percentage = (totalMarks / (numEvaluations * 10)) * 100;
@@ -226,22 +259,33 @@ Result: [Pass/Fail]
 Remark: [Brief remark on student's performance]
 ''';
 
-  final generated = await callGemini(model, prompt, maxOutputTokens: 300, temperature: 0.0);
+  try {
+    final generated = await callGemini(
+      model,
+      prompt,
+      maxOutputTokens: 300,
+      temperature: 0.0,
+    );
 
-  if (generated != null) {
-    final extracted = parseResponse1(generated);
-    var uidd = Uuid().v1();
-    await FirebaseFirestore.instance.collection('summaryReport').doc(uidd).set({
-      "uid": uid,
-      "classroomId": classroomId,
-      "totalMarks": extracted["totalMarks"],
-      "percentage": extracted["percentage"],
-      "grade": extracted["grade"],
-      "result": extracted["result"],
-      "remark": extracted["remark"],
-    });
-  } else {
-    print("Gemini returned no response for summary generation.");
+    if (generated != null && generated.isNotEmpty) {
+      final extracted = parseResponse1(generated);
+      var uidd = Uuid().v1();
+      await FirebaseFirestore.instance.collection('summaryReport').doc(uidd).set({
+        "uid": uid,
+        "classroomId": classroomId,
+        "totalMarks": extracted["totalMarks"],
+        "percentage": extracted["percentage"],
+        "grade": extracted["grade"],
+        "result": extracted["result"],
+        "remark": extracted["remark"],
+      });
+      print('Summary report generated successfully');
+    } else {
+      print("Gemini returned no response for summary generation.");
+    }
+  } catch (e) {
+    print("Error generating student report: $e");
+    // Optionally save an error state to Firestore if needed, or just log it for now
   }
 }
 
@@ -256,16 +300,22 @@ String getGrade(double percentage) {
 
 Map<String, dynamic> parseResponse1(String responseText) {
   final totalMarksRegex = RegExp(r"Total Marks:\s*(\d+)");
-  final percentageRegex = RegExp(r"Percentage:\s*([\d.]+)%");
+  final percentageRegex = RegExp(r"Percentage:\s*([\d.]+)%?");
   final gradeRegex = RegExp(r"Grade:\s*(\w+)");
   final resultRegex = RegExp(r"Result:\s*(\w+)");
   final remarkRegex = RegExp(r"Remark:\s*(.+)", dotAll: true);
 
   return {
-    "totalMarks": int.parse(totalMarksRegex.firstMatch(responseText)?.group(1) ?? "0"),
-    "percentage": double.parse(percentageRegex.firstMatch(responseText)?.group(1) ?? "0.0"),
+    "totalMarks": int.parse(
+      totalMarksRegex.firstMatch(responseText)?.group(1) ?? "0",
+    ),
+    "percentage": double.parse(
+      percentageRegex.firstMatch(responseText)?.group(1) ?? "0.0",
+    ),
     "grade": gradeRegex.firstMatch(responseText)?.group(1) ?? "N/A",
     "result": resultRegex.firstMatch(responseText)?.group(1) ?? "N/A",
-    "remark": remarkRegex.firstMatch(responseText)?.group(1)?.trim() ?? "No remark provided.",
+    "remark":
+        remarkRegex.firstMatch(responseText)?.group(1)?.trim() ??
+        "No remark provided.",
   };
 }
